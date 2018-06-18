@@ -9,7 +9,12 @@
 #include "resource.h"
 
 int meetFirst;
-int size;
+int finalGroupSize;
+int meetupCount;
+sem_t waitForArrival;
+sem_t waitForCode;
+sem_t mutex;
+static resource_t data;
 
 void initialize_meetup(int n, int mf) {
   char label[100];
@@ -19,17 +24,42 @@ void initialize_meetup(int n, int mf) {
     fprintf(stderr, "A meetup size of %d??\n", n);
     exit(1);
   }
-
-  size = n;
+  // Initialize a shared semaphore to value of 1 so we can use as mutex
+  sem_init(&mutex, 0, 1);
+  sem_init(&waitForArrival, 0, 0);
+  sem_init(&waitForCode, 0, 1);
+  meetupCount = 0;
+  finalGroupSize = n;
   meetFirst = mf;
-
-  /*
-   * Initialize the shared structures, including those used for
-   * synchronization.
-   */
 }
 
 void join_meetup(char *value, int len) {
-  printf("WOWZA\n");
-  printf("NOTHING IMPLEMENTED YET FOR join_meetup\n");
+  sem_wait(&mutex);
+  meetupCount++;
+  if (meetupCount == finalGroupSize) {
+    if (!meetFirst) {
+      write_resource(&data, value, len);
+    }
+    sem_wait(&waitForCode);
+    sem_post(&waitForArrival);
+  } else if (meetFirst && meetupCount == 1) {
+    write_resource(&data, value, len);
+  }
+  sem_post(&mutex);
+
+  sem_wait(&waitForArrival);
+  sem_post(&waitForArrival);
+
+  read_resource(&data, value, len);
+
+  sem_wait(&mutex);
+  meetupCount--;
+  if (meetupCount == 0) {
+    sem_wait(&waitForArrival);
+    sem_post(&waitForCode);
+  }
+  sem_post(&mutex);
+
+  sem_wait(&waitForCode);
+  sem_post(&waitForCode);
 }
