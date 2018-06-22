@@ -29,19 +29,25 @@ void initialize_readers_writer() {
 }
 
 // If we see writers, we sleep until broadcasted, done in a loop to avoid
-// spontaneous wakeups Once we have passed the condition, increment the readers
+// spontaneous wakeups. Once we have passed the condition, increment the readers
 // variable and read the data. Lastly signal to the waiting threads.
 void rw_read(char *value, int len) {
+  // Lock mutex to access variables
   pthread_mutex_lock(&mutex);
   while (writers) {
     pthread_cond_wait(&myTurn, &mutex);
   }
+  // We can read now
   readers++;
+  // Don't need this mutex anymore
   pthread_mutex_unlock(&mutex);
+  // Read the resource, we know that no more writers are currently writing
   read_resource(&data, value, len);
+  // Acquire the mutex again to alter the readers variable
   pthread_mutex_lock(&mutex);
   readers--;
   pthread_mutex_unlock(&mutex);
+  // Wake up any sleeping writers
   pthread_cond_broadcast(&myTurn);
 }
 
