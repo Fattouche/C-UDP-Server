@@ -8,19 +8,19 @@
 #include "resource.h"
 #include "rw.h"
 
-/* The idea for this "lightswitch" solution is taken directly from the little
+/* The idea for this "light_switch_t" solution is taken directly from the little
  * book of semaphores.
  */
 
 typedef struct {
   int counter;
   sem_t mutex;
-} LightSwitch;
+} light_switch_t;
 
 sem_t no_readers;
 sem_t no_writers;
-LightSwitch read;
-LightSwitch write;
+static light_switch_t read;
+static light_switch_t write;
 static resource_t data;
 
 void initialize_readers_writer() {
@@ -32,36 +32,38 @@ void initialize_readers_writer() {
   sem_init(&write.mutex, 0, 1);
 }
 
-void lock_switch(LightSwitch light, sem_t *sem) {
-  sem_wait(&light.mutex);
-  light.counter++;
-  if (light.counter == 1) {
+void lock_switch(light_switch_t *light, sem_t *sem) {
+  sem_wait(&(*light).mutex);
+  (*light).counter++;
+  if ((*light).counter == 1) {
     sem_wait(sem);
   }
-  sem_post(&light.mutex);
+  sem_post(&(*light).mutex);
 }
 
-void unlock_switch(LightSwitch light, sem_t *sem) {
-  sem_wait(&light.mutex);
-  light.counter--;
-  if (light.counter == 0) {
+void unlock_switch(light_switch_t *light, sem_t *sem) {
+  sem_wait(&(*light).mutex);
+  (*light).counter--;
+  if ((*light).counter == 0) {
     sem_post(sem);
   }
-  sem_post(&light.mutex);
+  sem_post(&(*light).mutex);
 }
 
 void rw_read(char *value, int len) {
+  int x;
+  sem_getvalue(&no_readers, &x);
   sem_wait(&no_readers);
-  lock_switch(read, &no_writers);
+  lock_switch(&read, &no_writers);
   sem_post(&no_readers);
   read_resource(&data, value, len);
-  unlock_switch(read, &no_writers);
+  unlock_switch(&read, &no_writers);
 }
 
 void rw_write(char *value, int len) {
-  lock_switch(write, &no_readers);
+  lock_switch(&write, &no_readers);
   sem_wait(&no_writers);
   write_resource(&data, value, len);
   sem_post(&no_writers);
-  unlock_switch(write, &no_readers);
+  unlock_switch(&write, &no_readers);
 }
