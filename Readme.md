@@ -1,6 +1,4 @@
-# Assignment 2: Concurrency
-
-### Bonus feature:
+#### Alternative implementation:
 In addition to the normal readers/writers using condition variables and mutexes, I have implemented the `LightSwitch` solution as described in `The little book of Semaphores`. 
 __All credit of the idea can be attributed to the author of the book, howevever I have added C specific implementation details__.
 
